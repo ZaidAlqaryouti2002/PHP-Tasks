@@ -76,4 +76,35 @@ implode function takes array and glues them together
 
     $highest_temps = array_slice($recorded_temps, -5);
     echo "List of five highest temperatures: " . implode(", ", $highest_temps) . "<br>";
+
+
+  ?>
+
+
+   <?php
+    /* 7 */
+
+    $array1 = array("color" => "red", 2, 4);
+    $array2 = array("a", "b", "color" => "green", "shape" => "trapezoid", 4);
+
+    $mergerdArray = array_merge($array1, $array2);
+
+    print_r($mergerdArray)."<br>";
+
+  ?>  
+
+  <?php
+
+    
+   
+   function convertToUpperCase($array) {
+    return array_map('strtoupper', $array);
+   }
+
+   $colors = array("red", "blue", "white", "yellow");
+
+   $result = convertToUpperCase($colors);
+
+   print_r($result);
+
   ?>
