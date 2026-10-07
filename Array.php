@@ -43,5 +43,37 @@ implode function takes array and glues them together
    $newItem = '$';
    $target = $location-1;
    array_splice($arr, $target, 0, $newItem);
-   echo implode("",$arr);
+   echo implode("",$arr)."<br>";
+  ?>
+
+  <?php
+  /* 5 */
+  $fruits = ["d" => 'lemon', "a"=>'orange', "b" => 'banana', "c" => 'apple'];
+  asort($fruits);
+  foreach($fruits as $key => $value){
+    echo $key. "=". $value. "<br>";
+  }
+
+  ?>
+
+  <?php
+  /* 6 */
+    $recorded_temps = [
+    78, 60, 62, 68, 71, 68, 73, 85, 66, 64,
+    76, 63, 75, 76, 73, 68, 62, 73, 72, 65,
+    74, 62, 62, 65, 64, 68, 73, 75, 79, 73
+    ];
+
+    $average = array_sum($recorded_temps) / count($recorded_temps);
+
+    echo "Average Tempreture is : ". round($average,1) . "<br>";
+   
+    sort($recorded_temps);
+
+    $lowest_temps = array_slice($recorded_temps, 0, 4);
+    echo "List of five lowest temperatures: " . implode(", ", $lowest_temps) . "<br>";
+
+
+    $highest_temps = array_slice($recorded_temps, -5);
+    echo "List of five highest temperatures: " . implode(", ", $highest_temps) . "<br>";
   ?>
