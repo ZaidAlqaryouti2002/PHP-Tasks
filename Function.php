@@ -35,6 +35,7 @@ if (isPrime($input)) {
 ?>
 
 <?php
+   /* 3 */
 
   function swap(&$x, &$y){
     $temp= $x;
@@ -45,11 +46,13 @@ if (isPrime($input)) {
   $x=12;
   $y=10;
   swap($x,$y);
-  echo "y= ". $y. " x= ". $x;
+  echo "y= ". $y. " x= ". $x . "<br>";
 
 ?>
 
 <?php
+
+ /* 4 */
 
 function isArmstrong($number) {
     $sum = 0;
@@ -73,3 +76,46 @@ if (isArmstrong($input)) {
 }
 
 ?>
+
+<?php
+
+/*5*/
+
+function isPalindrome($string) {
+    // Remove non-alphanumeric characters
+    $cleaned = preg_replace('/[^a-zA-Z0-9]/', '', $string);
+
+    // Convert to lowercase
+    $cleaned = strtolower($cleaned);
+
+    // Compare with reversed string
+    return $cleaned === strrev($cleaned);
+}
+
+$input = "Eva, can I see bees in a cave?";
+
+if (isPalindrome($input)) {
+    echo "Yes it is a palindrome";
+} else {
+    echo "No it is not a palindrome";
+}
+
+?>
+
+<?php
+
+/*6*/
+
+function removeDuplicates($array) {
+    // array_values resets the numeric keys back to 0, 1, 2...
+    return array_values(array_unique($array));
+}
+
+$array1 = array(2, 4, 7, 4, 8, 4);
+
+$array1 = removeDuplicates($array1);
+
+print_r($array1);
+
+?>
+
