@@ -6,6 +6,11 @@ require "db.php";
 
 $error = "";
 
+if (isset($_SESSION["user_id"])) {
+    header("Location: dashboard.php");
+    exit;
+}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $email = trim($_POST["email"] ?? "");
@@ -37,7 +42,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $_SESSION["user_id"] = $user["id"];
                 $_SESSION["user_name"] = $user["name"];
 
-                header("Location: users.php");
+                header("Location: dashboard.php");
                 exit;
 
             } else {
