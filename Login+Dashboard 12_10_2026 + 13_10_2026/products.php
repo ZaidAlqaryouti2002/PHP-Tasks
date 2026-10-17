@@ -1,296 +1,513 @@
 <?php
 
+// =========================
+// 1) START SESSION
+// =========================
 session_start();
 
+
+// =========================
+// 2) DATABASE CONNECTION
+// =========================
 require "db.php";
 
+
+// =========================
+// 3) INITIAL VARIABLES
+// =========================
+$message = "";
+
+$product_id = "";
+$edit_name = "";
+$edit_description = "";
+$edit_price = "";
+$edit_quantity = "";
+
+
+// =========================
+// 4) PROTECT PAGE
+// =========================
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit;
 }
 
-$error = "";
-$success = "";
-$editProduct = null;
 
-/* Delete product */
+// =========================
+// 5) DELETE PRODUCT
+// =========================
 if (isset($_GET["delete"])) {
 
-    $productId = (int) $_GET["delete"];
+    $delete_id = $_GET["delete"];
 
-    $statement = $con->prepare("DELETE FROM products WHERE id = ?");
-    $statement->bind_param("i", $productId);
+    $statement = $connection->prepare(
+        "DELETE FROM products
+         WHERE id = ?"
+    );
+
+    $statement->bind_param("i", $delete_id);
 
     if ($statement->execute()) {
-        $success = "Product deleted successfully";
+        $message = "Product deleted successfully";
     } else {
-        $error = "Failed to delete product";
+        $message = "Failed to delete product";
     }
 }
 
-/* Get product data for editing */
+
+// =========================
+// 6) GET PRODUCT FOR EDIT
+// =========================
 if (isset($_GET["edit"])) {
 
-    $productId = (int) $_GET["edit"];
+    $product_id = $_GET["edit"];
 
-    $statement = $con->prepare(
-        "SELECT * FROM products WHERE id = ?"
+    $statement = $connection->prepare(
+        "SELECT id, product_name, description, price, quantity
+         FROM products
+         WHERE id = ?"
     );
 
-    $statement->bind_param("i", $productId);
+    $statement->bind_param("i", $product_id);
+
     $statement->execute();
 
     $result = $statement->get_result();
-    $editProduct = $result->fetch_assoc();
+
+    if ($result->num_rows === 1) {
+
+        $product = $result->fetch_assoc();
+
+        $edit_name = $product["product_name"];
+        $edit_description = $product["description"];
+        $edit_price = $product["price"];
+        $edit_quantity = $product["quantity"];
+    }
 }
 
-/* Add or update product */
+
+// =========================
+// 7) HANDLE FORM SUBMISSION
+// =========================
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $productName = trim($_POST["product_name"] ?? "");
+    $product_id = $_POST["product_id"] ?? "";
+
+    $product_name = trim($_POST["product_name"] ?? "");
     $description = trim($_POST["description"] ?? "");
     $price = $_POST["price"] ?? "";
     $quantity = $_POST["quantity"] ?? "";
-    $productId = $_POST["product_id"] ?? "";
 
+
+    // =========================
+    // 8) VALIDATION
+    // =========================
     if (
-        $productName === "" ||
+        $product_name === "" ||
         $description === "" ||
         $price === "" ||
         $quantity === ""
     ) {
-        $error = "All fields are required";
-    } elseif (!is_numeric($price) || $price < 0) {
-        $error = "Price must be a valid positive number";
-    } elseif (!is_numeric($quantity) || $quantity < 0) {
-        $error = "Quantity must be a valid positive number";
+
+        $message = "All fields are required";
+
+    } elseif (!is_numeric($price)) {
+
+        $message = "Price must be a number";
+
+    } elseif (!is_numeric($quantity)) {
+
+        $message = "Quantity must be a number";
+
+    } elseif ($price < 0 || $quantity < 0) {
+
+        $message = "Price and quantity cannot be negative";
     }
 
-    if ($error === "") {
 
-        /* Update existing product */
-        if ($productId !== "") {
+    // =========================
+    // 9) INSERT OR UPDATE PRODUCT
+    // =========================
+    if ($message === "") {
 
-            $productId = (int) $productId;
-            $quantity = (int) $quantity;
-            $price = (float) $price;
+        // =========================
+        // CREATE PRODUCT
+        // =========================
+        if ($product_id === "") {
 
-            $statement = $con->prepare(
-                "UPDATE products
-                 SET product_name = ?, description = ?, price = ?, quantity = ?
-                 WHERE id = ?"
-            );
-
-            $statement->bind_param(
-                "ssdii",
-                $productName,
-                $description,
-                $price,
-                $quantity,
-                $productId
-            );
-
-            if ($statement->execute()) {
-                $success = "Product updated successfully";
-                $editProduct = null;
-            } else {
-                $error = "Failed to update product";
-            }
-
-        /* Add new product */
-        } else {
-
-            $quantity = (int) $quantity;
-            $price = (float) $price;
-
-            $statement = $con->prepare(
+            $statement = $connection->prepare(
                 "INSERT INTO products
-                 (product_name, description, price, quantity)
-                 VALUES (?, ?, ?, ?)"
+                (product_name, description, price, quantity)
+                VALUES (?, ?, ?, ?)"
             );
 
             $statement->bind_param(
                 "ssdi",
-                $productName,
+                $product_name,
                 $description,
                 $price,
                 $quantity
             );
 
             if ($statement->execute()) {
-                $success = "Product added successfully";
+
+                $message = "Product added successfully";
+
             } else {
-                $error = "Failed to add product";
+
+                $message = "Failed to add product";
+            }
+
+        }
+
+        // =========================
+        // UPDATE PRODUCT
+        // =========================
+        else {
+
+            $statement = $connection->prepare(
+                "UPDATE products
+                 SET product_name = ?,
+                     description = ?,
+                     price = ?,
+                     quantity = ?
+                 WHERE id = ?"
+            );
+
+            $statement->bind_param(
+                "ssdii",
+                $product_name,
+                $description,
+                $price,
+                $quantity,
+                $product_id
+            );
+
+            if ($statement->execute()) {
+
+                $message = "Product updated successfully";
+
+                $product_id = "";
+                $edit_name = "";
+                $edit_description = "";
+                $edit_price = "";
+                $edit_quantity = "";
+
+            } else {
+
+                $message = "Failed to update product";
             }
         }
     }
 }
 
-$products = $con->query(
-    "SELECT * FROM products ORDER BY id DESC"
+
+// =========================
+// 10) GET ALL PRODUCTS
+// =========================
+$products = $connection->query(
+    "SELECT id, product_name, description, price, quantity
+     FROM products
+     ORDER BY id DESC"
 );
 
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Products</title>
-  <link rel="stylesheet" href="style.css">
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Products</title>
+
+    <link rel="stylesheet" href="style.css">
+
 </head>
+
 <body>
 
-  <header class="dashboard-header">
-    <div class="container">
-      <h2>Admin Dashboard</h2>
 
-      <nav>
-        <a href="dashboard.php">Dashboard</a>
-        <a href="users.php">Users</a>
-        <a href="products.php">Products</a>
-        <a href="logout.php">Logout</a>
-      </nav>
+<header class="dashboard-header">
+
+    <div class="container">
+
+        <h2>Admin Dashboard</h2>
+
+        <nav>
+
+            <a href="dashboard.php">
+                Dashboard
+            </a>
+
+            <a href="users.php">
+                Users
+            </a>
+
+            <a href="products.php">
+                Products
+            </a>
+
+            <a href="logout.php">
+                Logout
+            </a>
+
+        </nav>
+
     </div>
-  </header>
 
-  <main class="dashboard-main">
+</header>
+
+
+<main class="dashboard-main">
+
     <div class="container">
 
-      <h1 class="page-title">Product Management</h1>
 
-      <?php if ($error !== ""): ?>
-        <p class="message message-error">
-          <?= htmlspecialchars($error) ?>
-        </p>
-      <?php endif; ?>
+        <h1 class="page-title">
+            Product Management
+        </h1>
 
-      <?php if ($success !== ""): ?>
-        <p class="message message-success">
-          <?= htmlspecialchars($success) ?>
-        </p>
-      <?php endif; ?>
 
-      <section class="section">
-        <div class="two-columns">
+        <!-- =========================
+             11) DISPLAY MESSAGE
+        ========================== -->
 
-          <div>
-            <h2><?= $editProduct ? "Edit Product" : "Add Product" ?></h2>
+        <?php if ($message !== ""): ?>
 
-            <form action="" method="post">
+            <p class="message">
+                <?= htmlspecialchars($message) ?>
+            </p>
 
-              <input
-                type="hidden"
-                name="product_id"
-                value="<?= $editProduct["id"] ?? "" ?>"
-              >
+        <?php endif; ?>
 
-              <div class="form-group">
-                <label for="product_name">Product Name</label>
-                <input
-                  type="text"
-                  id="product_name"
-                  name="product_name"
-                  value="<?= htmlspecialchars($editProduct["product_name"] ?? "") ?>"
-                  required
-                >
-              </div>
 
-              <div class="form-group">
-                <label for="description">Description</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  required
-                ><?= htmlspecialchars($editProduct["description"] ?? "") ?></textarea>
-              </div>
+        <section class="section">
 
-              <div class="form-group">
-                <label for="price">Price</label>
-                <input
-                  type="number"
-                  id="price"
-                  name="price"
-                  step="0.01"
-                  min="0"
-                  value="<?= htmlspecialchars($editProduct["price"] ?? "") ?>"
-                  required
-                >
-              </div>
+            <div class="two-columns">
 
-              <div class="form-group">
-                <label for="quantity">Quantity</label>
-                <input
-                  type="number"
-                  id="quantity"
-                  name="quantity"
-                  min="0"
-                  value="<?= htmlspecialchars($editProduct["quantity"] ?? "") ?>"
-                  required
-                >
-              </div>
 
-              <button class="btn" type="submit">
-                <?= $editProduct ? "Update Product" : "Add Product" ?>
-              </button>
-            </form>
-          </div>
+                <!-- =========================
+                     12) PRODUCT FORM
+                ========================== -->
 
-          <div>
-            <h2>Products List</h2>
+                <div>
 
-            <div class="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th>Created Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
+                    <h2>Add / Edit Product</h2>
 
-                <tbody>
-                  <?php while ($product = $products->fetch_assoc()): ?>
-                    <tr>
-                      <td><?= $product["id"] ?></td>
-                      <td><?= htmlspecialchars($product["product_name"]) ?></td>
-                      <td><?= htmlspecialchars($product["description"]) ?></td>
-                      <td><?= htmlspecialchars($product["price"]) ?></td>
-                      <td><?= htmlspecialchars($product["quantity"]) ?></td>
-                      <td>
-                        <?= htmlspecialchars(
-                          $product["created_date"] ??
-                          $product["create_date"] ??
-                          ""
-                        ) ?>
-                      </td>
-                      <td class="actions">
-                        <a
-                          class="btn btn-small btn-secondary"
-                          href="products.php?edit=<?= $product["id"] ?>"
-                        >Edit</a>
+                    <form action="" method="post">
 
-                        <a
-                          class="btn btn-small btn-danger"
-                          href="products.php?delete=<?= $product["id"] ?>"
-                        >Delete</a>
-                      </td>
-                    </tr>
-                  <?php endwhile; ?>
-                </tbody>
-              </table>
+
+                        <input
+                            type="hidden"
+                            name="product_id"
+                            value="<?= htmlspecialchars($product_id) ?>"
+                        >
+
+
+                        <div class="form-group">
+
+                            <label for="product_name">
+                                Product Name
+                            </label>
+
+                            <input
+                                type="text"
+                                id="product_name"
+                                name="product_name"
+                                value="<?= htmlspecialchars($edit_name) ?>"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="description">
+                                Description
+                            </label>
+
+                            <textarea
+                                id="description"
+                                name="description"
+                                required
+                            ><?= htmlspecialchars($edit_description) ?></textarea>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="price">
+                                Price
+                            </label>
+
+                            <input
+                                type="number"
+                                id="price"
+                                name="price"
+                                step="0.01"
+                                min="0"
+                                value="<?= htmlspecialchars($edit_price) ?>"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="quantity">
+                                Quantity
+                            </label>
+
+                            <input
+                                type="number"
+                                id="quantity"
+                                name="quantity"
+                                min="0"
+                                value="<?= htmlspecialchars($edit_quantity) ?>"
+                                required
+                            >
+
+                        </div>
+
+
+                        <button
+                            class="btn"
+                            type="submit"
+                        >
+                            Save Product
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <!-- =========================
+                     13) PRODUCTS TABLE
+                ========================== -->
+
+                <div>
+
+                    <h2>Products List</h2>
+
+                    <div class="table-wrapper">
+
+                        <table>
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>ID</th>
+
+                                    <th>Name</th>
+
+                                    <th>Description</th>
+
+                                    <th>Price</th>
+
+                                    <th>Quantity</th>
+
+                                    <th>Actions</th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+
+                            <!-- =========================
+                                 14) DISPLAY PRODUCTS LOOP
+                            ========================== -->
+
+                            <?php while ($product = $products->fetch_assoc()): ?>
+
+
+                                <tr>
+
+
+                                    <td>
+                                        <?= $product["id"] ?>
+                                    </td>
+
+
+                                    <td>
+                                        <?= htmlspecialchars($product["product_name"]) ?>
+                                    </td>
+
+
+                                    <td>
+                                        <?= htmlspecialchars($product["description"]) ?>
+                                    </td>
+
+
+                                    <td>
+                                        <?= $product["price"] ?>
+                                    </td>
+
+
+                                    <td>
+                                        <?= $product["quantity"] ?>
+                                    </td>
+
+
+                                    <td class="actions">
+
+
+                                        <a
+                                            class="btn btn-small btn-secondary"
+                                            href="products.php?edit=<?= $product["id"] ?>"
+                                        >
+                                            Edit
+                                        </a>
+
+
+                                        <a
+                                            class="btn btn-small btn-danger"
+                                            href="products.php?delete=<?= $product["id"] ?>"
+                                        >
+                                            Delete
+                                        </a>
+
+
+                                    </td>
+
+
+                                </tr>
+
+
+                            <?php endwhile; ?>
+
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+
             </div>
-          </div>
 
-        </div>
-      </section>
+        </section>
+
     </div>
-  </main>
+
+</main>
 
 </body>
+
 </html>

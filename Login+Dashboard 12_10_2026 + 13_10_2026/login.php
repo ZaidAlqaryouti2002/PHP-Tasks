@@ -1,28 +1,46 @@
 <?php
 
+// =========================
+// START SESSION
+// =========================
 session_start();
 
+// =========================
+// DATABASE CONNECTION
+// =========================
 require "db.php";
 
-$error = "";
+$message = "";
 
+// =========================
+// REDIRECT LOGGED-IN USER
+// =========================
 if (isset($_SESSION["user_id"])) {
     header("Location: dashboard.php");
     exit;
 }
 
+// =========================
+// HANDLE LOGIN FORM
+// =========================
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $email = trim($_POST["email"] ?? "");
     $password = $_POST["password"] ?? "";
 
+    // =========================
+    // VALIDATION
+    // =========================
     if ($email === "" || $password === "") {
-        $error = "Email and password are required";
+        $message = "All fields are required";
     }
 
-    if ($error === "") {
+    // =========================
+    // FIND USER BY EMAIL
+    // =========================
+    if ($message === "") {
 
-        $statement = $con->prepare(
+        $statement = $connection->prepare(
             "SELECT id, name, email, password
              FROM users
              WHERE email = ?"
@@ -33,24 +51,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         $result = $statement->get_result();
 
+        // =========================
+        // VERIFY PASSWORD
+        // =========================
         if ($result->num_rows === 1) {
 
-            $user = $result->fetch_assoc();
+            $member = $result->fetch_assoc();
 
-            if (password_verify($password, $user["password"])) {
+            if (password_verify($password, $member["password"])) {
 
-                $_SESSION["user_id"] = $user["id"];
-                $_SESSION["user_name"] = $user["name"];
+                $_SESSION["user_id"] = $member["id"];
+                $_SESSION["member_name"] = $member["name"];
 
                 header("Location: dashboard.php");
                 exit;
 
             } else {
-                $error = "Invalid email or password";
+                $message = "Invalid login";
             }
 
         } else {
-            $error = "Invalid email or password";
+            $message = "Invalid login";
         }
     }
 }
@@ -60,43 +81,54 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <main class="auth-page">
+<main class="auth-page">
     <section class="auth-card">
-      <h1>Login</h1>
-      <p>Enter your email and password.</p>
 
-      <?php if ($error !== ""): ?>
-        <p class="message message-error">
-          <?= htmlspecialchars($error) ?>
-        </p>
-      <?php endif; ?>
+        <h1>Login</h1>
+        <p>Enter your email and password.</p>
 
-      <form action="" method="post">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" required>
+        <!-- =========================
+             DISPLAY MESSAGE
+        ========================== -->
+        <?php if ($message !== ""): ?>
+            <p class="message message-error">
+                <?= htmlspecialchars($message) ?>
+            </p>
+        <?php endif; ?>
+
+        <!-- =========================
+             LOGIN FORM
+        ========================== -->
+        <form action="" method="post">
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button class="btn" type="submit">Login</button>
+
+        </form>
+
+        <div class="auth-link">
+            Don't have an account?
+            <a href="register.php">Register</a>
         </div>
 
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" id="password" name="password" required>
-        </div>
-
-        <button class="btn" type="submit">Login</button>
-      </form>
-
-      <div class="auth-link">
-        Don't have an account? <a href="register.php">Register</a>
-      </div>
     </section>
-  </main>
+</main>
 
 </body>
 </html>

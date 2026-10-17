@@ -1,19 +1,62 @@
 <?php
 
+// =========================
+// 1) START SESSION
+// =========================
 session_start();
 
+// =========================
+// 2) DATABASE CONNECTION
+// =========================
 require "db.php";
 
+// =========================
+// 3) PROTECT PAGE
+// =========================
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit;
 }
 
-$userResult = $con->query("SELECT COUNT(*) AS total_users FROM users");
-$userCount = $userResult->fetch_assoc();
+// =========================
+// 4) COUNT USERS
+// =========================
+$userResult = $connection->query(
+    "SELECT COUNT(*) AS total_users
+     FROM users"
+);
 
-$productResult = $con->query("SELECT COUNT(*) AS total_products FROM products");
-$productCount = $productResult->fetch_assoc();
+$userData = $userResult->fetch_assoc();
+$total_users = $userData["total_users"];
+
+// =========================
+// 5) COUNT PRODUCTS
+// =========================
+$productResult = $connection->query(
+    "SELECT COUNT(*) AS total_products
+     FROM products"
+);
+
+$productData = $productResult->fetch_assoc();
+$total_products = $productData["total_products"];
+
+// =========================
+// 6) GET ALL USERS
+// =========================
+$users = $connection->query(
+    "SELECT id, name, email
+     FROM users
+     ORDER BY id DESC"
+);
+
+// =========================
+// 7) GET ALL PRODUCTS
+// =========================
+$products = $connection->query(
+    "SELECT id, product_name, price, quantity
+     FROM products
+     ORDER BY id DESC"
+);
 
 ?>
 
@@ -43,42 +86,96 @@ $productCount = $productResult->fetch_assoc();
 <main class="dashboard-main">
     <div class="container">
 
+        <!-- =========================
+             8) WELCOME MESSAGE
+        ========================== -->
         <h1 class="page-title">
-            Welcome, <?= htmlspecialchars($_SESSION["user_name"]) ?>
+            Welcome, <?= htmlspecialchars($_SESSION["member_name"]) ?>
         </h1>
 
-        <section class="stats">
-            <article class="stat-card">
+        <!-- =========================
+             9) DASHBOARD COUNTS
+        ========================== -->
+        <section class="dashboard-cards">
+
+            <div class="dashboard-card">
                 <h3>Total Users</h3>
-                <strong><?= $userCount["total_users"] ?></strong>
-            </article>
+                <p><?= $total_users ?></p>
+            </div>
 
-            <article class="stat-card">
+            <div class="dashboard-card">
                 <h3>Total Products</h3>
-                <strong><?= $productCount["total_products"] ?></strong>
-            </article>
+                <p><?= $total_products ?></p>
+            </div>
+
         </section>
 
+        <!-- =========================
+             10) USERS TABLE
+        ========================== -->
         <section class="section">
-            <div class="section-header">
-                <div>
-                    <h2>User Management</h2>
-                    <p>View, add, edit and delete users.</p>
-                </div>
 
-                <a class="btn" href="users.php">Manage Users</a>
+            <h2>Users</h2>
+
+            <div class="table-wrapper">
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                    <?php while ($user = $users->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= $user["id"] ?></td>
+                            <td><?= htmlspecialchars($user["name"]) ?></td>
+                            <td><?= htmlspecialchars($user["email"]) ?></td>
+                        </tr>
+                    <?php endwhile; ?>
+                    </tbody>
+
+                </table>
             </div>
+
         </section>
 
+        <!-- =========================
+             11) PRODUCTS TABLE
+        ========================== -->
         <section class="section">
-            <div class="section-header">
-                <div>
-                    <h2>Product Management</h2>
-                    <p>View, add, edit and delete products.</p>
-                </div>
 
-                <a class="btn" href="products.php">Manage Products</a>
+            <h2>Products</h2>
+
+            <div class="table-wrapper">
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                    <?php while ($product = $products->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= $product["id"] ?></td>
+                            <td><?= htmlspecialchars($product["product_name"]) ?></td>
+                            <td><?= $product["price"] ?></td>
+                            <td><?= $product["quantity"] ?></td>
+                        </tr>
+                    <?php endwhile; ?>
+                    </tbody>
+
+                </table>
             </div>
+
         </section>
 
     </div>
